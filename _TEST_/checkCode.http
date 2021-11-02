@@ -1,0 +1,8 @@
+POST http://localhost:8000/user/checkCode
+Content-Type: application/json
+
+{
+  "encryptedCode": "ywBxmTZFL4Oe932SP4H3pOxHuC+iQkyyFFIxasAKBRXVZw==",
+  "decryptedCode": "567701",
+  "sentDate": "2021-11-02 10:06:32 PM"
+}
