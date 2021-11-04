@@ -1,7 +1,6 @@
 package login
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -10,36 +9,33 @@ import (
 	"time"
 )
 
-func LoginSetup(s *gin.RouterGroup)  {
-	s.POST("/sendCode",sendCode)
-	s.POST("/checkCode",checkVerification)
+func LoginSetup(s *gin.RouterGroup) {
+	s.POST("/sendCode", sendCode)
+	s.POST("/checkCode", checkVerification)
 }
 
 //u can define any key with 32 bits
 var key = "alisultaniseviyor"
 
-func sendCode(c *gin.Context)  {
-	body :=loginStruct{}
-	data,err := c.GetRawData()
+func sendCode(c *gin.Context) {
+	body := loginStruct{}
+	data, err := c.GetRawData()
 	if err != nil {
-		helpers.MyAbort(c,"Something went wrong when you are getting values from body")
+		helpers.MyAbort(c, "Something went wrong when you are getting values from body")
 		return
 	}
 
-	err = json.Unmarshal(data,&body)
+	err = json.Unmarshal(data, &body)
 	if err != nil {
 		helpers.MyAbort(c, "Bad Input")
 		return
 	}
 
-	// cipher key it means you can define 32 digit
-	key := "thisis32bitlongpassphraseimusing"
-
 	if !helpers.EmailIsValid(body.Email) {
-		if err != nil {
-			helpers.MyAbort(c, "Please check your email")
-			return
-		}
+
+		helpers.MyAbort(c, "Please check your email")
+		return
+
 	}
 
 	// getting current time
@@ -47,12 +43,16 @@ func sendCode(c *gin.Context)  {
 
 	//generating code
 	code, _ := helpers.GenerateDigit(6)
+	fmt.Println("code", code)
+
+	//adding current time and code
+	codeWithTime := currentTime + "," + code + "," + body.Email
 
 	//sending the code to email
-	sendEmail(code, body.Email)
+	//sendEmail(code, body.Email)
 
 	//generating encrypted code from the code
-	encryptedCode, err := helpers.EncryptAES([]byte(code), []byte(key))
+	encryptedCode, err := helpers.EncryptAES([]byte(codeWithTime), []byte(key))
 	if err != nil {
 		helpers.MyAbort(c, "Something went wrong when encrypting code")
 		return
@@ -62,7 +62,6 @@ func sendCode(c *gin.Context)  {
 	//You can save the time on ur database to check it
 	c.JSON(200, gin.H{
 		"encryptedCode": encryptedCode,
-		"sent_date":     currentTime,
 	})
 }
 
@@ -94,24 +93,29 @@ func sendEmail(code, mail string) {
 
 }
 
-func checkVerification(c *gin.Context)  {
+func checkVerification(c *gin.Context) {
 	body := verification{}
-	data,err := c.GetRawData()
+	data, err := c.GetRawData()
 	if err != nil {
-		helpers.MyAbort(c,"Input format is wrong")
+		helpers.MyAbort(c, "Input format is wrong")
 		return
 	}
-	err= json.Unmarshal(data,&body)
+	err = json.Unmarshal(data, &body)
 	if err != nil {
-		helpers.MyAbort(c,"Bad Format")
+		helpers.MyAbort(c, "Bad Format")
 		return
 	}
 
 	date := "2006-01-02 3:4:5 PM"
 	currentTime := time.Now().Format(date)
 
+	sent_time, codeDigit, email := helpers.SplitValue(body.EncryptedCode, key)
+	fmt.Println("sent_tıme", sent_time)
+	fmt.Println("codeDigit", codeDigit)
+	fmt.Println("email", email)
+
 	// to compare two times according to same Location
-	sentDate, err := time.Parse(date, body.SentDate)
+	sentDate, err := time.Parse(date, sent_time)
 	currentTimeParse, err := time.Parse(date, currentTime)
 
 	//getting the differences
@@ -120,34 +124,27 @@ func checkVerification(c *gin.Context)  {
 	//getting differences as seconds
 	second := int(diff.Seconds())
 
-	encryptCode, _ := base64.StdEncoding.DecodeString(body.EncryptedCode)
-
-	decryptedCode, err := helpers.DecryptAES(encryptCode, []byte(key))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	code := body.DecryptedCode
 
-	if second > 30 {
-		c.JSON(400, "Your code is expired")
+	if !helpers.EmailIsValid(email) {
+
+		helpers.MyAbort(c, "Check your email !!")
 		return
 	} else {
-		if code == string(decryptedCode) {
-			c.JSON(200, "Verification is completed!")
+		if second > 30 {
+			helpers.MyAbort(c, "Your code is expired")
+			return
 		} else {
-			c.JSON(400, "Check your code !!")
+			if code == string(codeDigit) {
+				c.JSON(200, "Verification is completed!")
+			} else {
+				helpers.MyAbort(c, "Check your code !!")
+			}
 		}
 	}
+
 }
-
-
-
-
-
-
-
-
-
-
-

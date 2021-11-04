@@ -5,11 +5,13 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	emailverifier "github.com/AfterShip/email-verifier"
 	"github.com/gin-gonic/gin"
 	"io"
+	"strings"
 )
 
 type err struct {
@@ -19,10 +21,6 @@ type err struct {
 func MyAbort(c *gin.Context, str string) {
 	c.AbortWithStatusJSON(400, err{Error: str})
 }
-
-//func TimeCalculater(time string) string  {
-//
-//}
 
 var (
 	verifier = emailverifier.NewVerifier()
@@ -61,7 +59,6 @@ func GenerateDigit(length int) (string, error) {
 
 	return string(buffer), nil
 }
-
 
 func EncryptAES(plaintext []byte, key []byte) (ciphertext []byte, err error) {
 	k := sha256.Sum256(key)
@@ -105,4 +102,19 @@ func DecryptAES(ciphertext []byte, key []byte) (plaintext []byte, err error) {
 		ciphertext[gcm.NonceSize():],
 		nil,
 	)
+}
+
+func SplitValue(encryptCode, key string) (string, string, string) {
+	encryptedCode, _ := base64.StdEncoding.DecodeString(encryptCode)
+	decryptedCode, err := DecryptAES(encryptedCode, []byte(key))
+	if err != nil {
+		fmt.Println("something wrong when you are decryptedCode ")
+		return "", "", ""
+	}
+	splitToken := strings.Split(string(decryptedCode), ",")
+	time := splitToken[0]
+	code := splitToken[1]
+	email := splitToken[2]
+
+	return time, code, email
 }

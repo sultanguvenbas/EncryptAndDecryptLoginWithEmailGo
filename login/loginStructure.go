@@ -7,5 +7,4 @@ type loginStruct struct {
 type verification struct {
 	EncryptedCode string
 	DecryptedCode string
-	SentDate      string
 }
