@@ -15,7 +15,7 @@ func LoginSetup(s *gin.RouterGroup) {
 }
 
 //u can define any key with 32 bits
-var key = "alisultaniseviyor"
+var key = "exampletextsimple"
 
 func sendCode(c *gin.Context) {
 	body := loginStruct{}
